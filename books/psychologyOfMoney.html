@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Summary with Text-to-Speech and Background Music</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #8B4513;
+            --secondary-color: #A0522D;
+            --background-color: #FDF5E6;
+            --text-color: #3E2723;
+            --accent-color: #D2691E;
+            --shadow-color: rgba(139, 69, 19, 0.1);
+            --card-background: #FFF8ED;
+            --summary-background: #FFF3E0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--background-color);
+            background-image: linear-gradient(45deg, #f8e2ce 25%, transparent 25%),
+                            linear-gradient(-45deg, #f8e2ce 25%, transparent 25%),
+                            linear-gradient(45deg, transparent 75%, #f8e2ce 75%),
+                            linear-gradient(-45deg, transparent 75%, #f8e2ce 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            color: var(--text-color);
+            line-height: 1.7;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            background: var(--card-background);
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 
+                0 4px 6px var(--shadow-color),
+                0 10px 15px var(--shadow-color);
+            border: 1px solid rgba(139, 69, 19, 0.1);
+            position: relative;
+        }
+
+        .loading-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background-color: rgba(139, 69, 19, 0.1);
+            display: none;
+        }
+
+        .loading-bar {
+            height: 100%;
+            background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+            width: 0%;
+            transition: width 0.8s ease-in-out;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-weight: 700;
+            position: relative;
+            padding-bottom: 1rem;
+        }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+            border-radius: 2px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            background: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            background: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 69, 19, 0.2);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background-color: #D2B48C;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .summary {
+            background: var(--summary-background);
+            padding: 2rem;
+            border-radius: 15px;
+            margin-top: 2rem;
+            border: 1px solid rgba(139, 69, 19, 0.1);
+        }
+        
+        .summary p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            color: var(--text-color);
+        }
+
+        .summary p:last-child {
+            margin-bottom: 0;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: center;
+        }
+
+        .volume-slider {
+            width: 200px;
+            height: 5px;
+            -webkit-appearance: none;
+            background: var(--primary-color);
+            border-radius: 5px;
+            outline: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .container {
+                padding: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .summary {
+                padding: 1rem;
+            }
+            
+            button {
+                padding: 0.6rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loading-container">
+            <div class="loading-bar"></div>
+        </div>
+
+        <h1 class = "bookTitle">"The Psychology of Money" by Morgan Housel</h1>
+        
+        <div class="controls">
+            <button onclick="speak()">
+                <i class="fas fa-play"></i> Play Summary
+            </button>
+            <button onclick="pause()">
+                <i class="fas fa-pause"></i> Pause
+            </button>
+            <button onclick="resume()">
+                <i class="fas fa-redo"></i> Resume
+            </button>
+            <button onclick="stop()">
+                <i class="fas fa-stop"></i> Stop
+            </button>
+        </div>
+
+        <div class="volume-control">
+            <i class="fas fa-music"></i>
+            <input type="range" class="volume-slider" min="0" max="1" step="0.1" value="0.3" onchange="updateVolume(this.value)">
+        </div>
+        
+        <div class="summary">
+            
+
+            <p> "The Psychology of Money" by Morgan Housel is a FRESH take on how we THINK about money... It’s not just about NUMBERS or formulas... but about the EMOTIONS and BEHAVIORS that drive our financial decisions. Housel argues that doing well with money has LESS to do with how SMART you are... and MORE to do with how you BEHAVE. Through STORIES and INSIGHTS... he explores the PSYCHOLOGICAL factors that shape our relationship with money... and offers PRACTICAL lessons for building WEALTH and achieving FINANCIAL peace. </p> <p> One of the BIGGEST lessons? Money is deeply PERSONAL... What works for one person might not work for another... and understanding your OWN psychology is the key to making better financial choices. The book’s message is CLEAR... Success with money isn’t about being a genius... it’s about being PATIENT... HUMBLE... and SELF-AWARE. </p>
+
+<p> 1. Money is About Behavior  
+Imagine two people with the SAME income...  
+<br>  
+One ends up WEALTHY... the other BROKE.  
+<br>  
+The difference? It’s not about INTELLIGENCE... it’s about BEHAVIOR.  
+The book teaches you how to MASTER your financial behavior.  
+</p><p>  
+2. The Role of Luck and Risk  
+Success with money isn’t just about SKILL...  
+
+LUCK and RISK play a HUGE role in financial outcomes.  
+
+Housel reminds us to stay HUMBLE in success... and GRACEFUL in failure.  
+</p><p>  
+3. The Power of Compounding  
+Wealth isn’t built overnight...  
+
+It’s the result of SMALL... CONSISTENT actions over TIME.  
+
+The magic of COMPOUNDING works not just for money... but for habits and decisions too.  
+</p><p>  
+4. Freedom is the Ultimate Goal  
+Money’s real value isn’t in buying THINGS...  
+
+It’s in buying FREEDOM... the ability to do what you want... when you want... with who you want.  
+
+The GOAL: Use money to create a life of OPTIONS and FLEXIBILITY.  
+</p><p>  
+5. The Danger of Greed  
+More money doesn’t always mean more HAPPINESS...  
+
+In fact... GREED can lead to stress... regret... and even ruin.  
+
+Housel warns against chasing endless wealth... and encourages CONTENTMENT.  
+</p><p>  
+6. Everyone Has a Unique Money Story  
+Your financial decisions are shaped by your PAST... your CULTURE... and your PERSONAL experiences.  
+
+What makes sense to YOU might not make sense to someone else.  
+
+Understanding your OWN money story is key to making better choices.  
+</p><p>  
+7. Your Choice  
+Will you be the...  
+
+Reckless Spender: Chasing short-term pleasures... Ignoring the future... Living paycheck to paycheck?  
+
+Wise Investor: Building wealth slowly... Staying patient... and Using money to create a life of FREEDOM?  
+
+The book basically says: "WAKE UP! Money is a TOOL... not a GOAL. Use it wisely."
+This was the summary of the book Psychology , thank you for studying it with us.
+</p>
+        </div>
+    </div>
+
+    <script>
+        let speech = null;
+        let speechQueue = [];
+        let isPlaying = false;
+        let backgroundMusic = new Audio('emotional-piano-music-256262.mp3');
+        backgroundMusic.loop = true;
+        backgroundMusic.volume = 0.2;
+        const loadingContainer = document.querySelector('.loading-container');
+        const loadingBar = document.querySelector('.loading-bar');
+
+        function updateVolume(value) {
+            backgroundMusic.volume = value;
+        }
+    
+        function showLoadingBar() {
+            loadingContainer.style.display = 'block';
+            loadingBar.style.width = '0%';
+            loadingBar.offsetHeight;
+            loadingBar.style.width = '100%';
+        }
+
+        function hideLoadingBar() {
+            loadingContainer.style.display = 'none';
+            loadingBar.style.width = '0%';
+        }
+    
+        function getPreferredVoice() {
+            const preferredVoices = [
+                "Google UK English Female",
+                "Google UK English Male",
+                "Google US English",
+                "Microsoft David Desktop - English (United States)",
+                "Google Deutsch",
+            ];
+    
+            const voices = window.speechSynthesis.getVoices();
+            return preferredVoices.reduce((found, preferred) => 
+                found || voices.find(v => v.name.includes(preferred) || v.lang.includes(preferred)), null
+            ) || (voices.length > 0 ? voices[0] : null);
+        }
+
+        function splitIntoChunks(text) {
+            const chunks = [];
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
+            let currentChunk = '';
+
+            sentences.forEach(sentence => {
+                if (currentChunk.length + sentence.length < 200) {
+                    currentChunk += sentence;
+                } else {
+                    if (currentChunk) chunks.push(currentChunk.trim());
+                    currentChunk = sentence;
+                }
+            });
+
+            if (currentChunk) chunks.push(currentChunk.trim());
+            return chunks;
+        }
+
+        function speakChunk() {
+            if (speechQueue.length === 0 || !isPlaying) {
+                isPlaying = false;
+                
+                backgroundMusic.pause();
+                backgroundMusic.currentTime = 0;
+                return;
+            }
+
+            const chunk = speechQueue.shift();
+            speech = new SpeechSynthesisUtterance(chunk);
+            // speech.voice = getPreferredVoice();
+            speech.rate = 0.9;  // Slightly slower for better emphasis
+            speech.pitch = 1.1;
+            speech.volume = 1;
+
+            // Add emphasis for certain punctuation
+    //         if (chunk.includes('!')) {
+    //             speech.pitch = 1.3;
+    //             speech.rate = 0.95;
+    //         } else if (chunk.includes('...')) {
+    //             speech.rate = 0.8;
+    //             speech.pitch = 0.9;
+    //         }
+    //        else if (chunk.includes('—')){
+    //             speech.rate=0.85;
+    //             speech.pitch=1.2;
+    //         }
+
+    //         //higlighting capitla letters
+    //       else if (/[A-Z]{2,}/.test(chunk)) {
+    //       speech.pitch = 1.4;
+    //       speech.rate = 0.9;
+    //         }
+
+    //        else if (chunk.includes('"')) {
+    //             speech.pitch = 1.2; // Slightly higher pitch for quoted text
+    //             }
+
+    // // Highlight question marks
+    //        else if (chunk.includes('?')) {
+    //              speech.pitch = 1.5; // Rising intonation for questions
+    //                   }
+
+    //                   // Highlight numbers
+    //          else if (/\d+/.test(chunk)) {
+    //          speech.rate = 0.8; 
+    //           speech.pitch = 1.3; 
+    //          }
+
+    // 1. Check ALL conditions independently
+    if (chunk.includes('!')) {
+        speech.pitch = 1.3;
+        speech.rate = 0.95;
+    }
+    
+    if (chunk.includes('...')) {
+        speech.rate = 0.8;
+        speech.pitch = 0.9;
+    }
+
+    // 2. Check for BOTH hyphens and em dashes
+    if (chunk.includes('-') || chunk.includes('—')) {
+        speech.rate = 0.85;
+        speech.pitch = 1.2;
+    }
+
+    // 3. Process other rules WITHOUT else-if
+    if (/[A-Z]{2,}/.test(chunk)) {
+        speech.pitch = 1.4;
+        speech.rate = 0.9;
+    }
+
+    if (chunk.includes('"')) {
+        speech.pitch = 1.2;
+    }
+
+    if (chunk.includes('?')) {
+        speech.pitch = 1.5;
+    }
+
+    if (/\d+/.test(chunk)) {
+        speech.rate = 0.8;
+        speech.pitch = 1.3;
+    }
+
+
+
+
+            speech.onend = () => {
+                if (isPlaying) {
+                    speakChunk();
+                }
+            };
+
+            window.speechSynthesis.speak(speech);
+        }
+    
+        function speak() {
+            stop();
+            showLoadingBar();
+            
+            backgroundMusic.play().catch(error => {
+                console.log("Audio playback failed:", error);
+            });
+    
+            const text = document.querySelector('.summary').textContent;
+            speechQueue = splitIntoChunks(text);
+            isPlaying = true;
+
+            setTimeout(() => {
+                hideLoadingBar();
+                speakChunk();
+            }, 800);
+
+            // Add periodic reset to prevent Chrome bug
+            setInterval(() => {
+                if (isPlaying && !window.speechSynthesis.speaking) {
+                    speakChunk();
+                }
+            }, 2599);
+        }
+    
+        function pause() {
+            isPlaying = false;
+            window.speechSynthesis.pause();
+            backgroundMusic.pause();
+        }
+    
+        function resume() {
+            isPlaying = true;
+            window.speechSynthesis.resume();
+            backgroundMusic.play();
+            if (!window.speechSynthesis.speaking) {
+                speakChunk();
+            }
+        }
+    
+        function stop() {
+            isPlaying = false;
+            speechQueue = [];
+            window.speechSynthesis.cancel();
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+            hideLoadingBar();
+        }
+        
+    
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
+        }
+
+        
+    </script>
+</body>
+</html>
